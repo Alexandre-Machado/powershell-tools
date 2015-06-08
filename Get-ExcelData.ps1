@@ -71,10 +71,4 @@ function Get-ExcelData {
     Remove-Job $job
 }
 
-Get-ExcelData -Path "C:\Users\alexa_000\SharePoint\Projeto SIM - Documentos\ARQUITETURA\Gerência de Configuração\Sistemas.xlsx" -Query "
-    Select * 
-    From ProjetoSIM 
-    Where [TFS Trunk] Is Not Null
-        And [TFS Branch] Is Not Null" |
-    Format-Table
 
