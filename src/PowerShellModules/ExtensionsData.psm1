@@ -1,4 +1,5 @@
-﻿$resource = @{
+﻿# Samples: https://gallery.technet.microsoft.com/scriptcenter/af687d99-5611-4097-97e4-691fda84ad42
+$resource = @{
 	required = "O paramentro {0} é requerido"
 }
 function Get-ExcelData {
@@ -105,103 +106,111 @@ function Get-SharePointListData {
         }
     }
 
-    if ( -not (checkMSAceOledbExist) ) {
-        installMicrosoftACEOLEDBProvider
-    }
-
     # Create the scriptblock to run in a job
     $JobCode = {
         Param($UrlPath, $Query, $ListID)
 
         $ConnectionString = 'Provider=Microsoft.ACE.OLEDB.12.0;WSS;IMEX=1;RetrieveIds=Yes;DATABASE={0};LIST={1};' -f $UrlPath, $ListID
-
-        $Connection = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
-		
-		try {
-			# Open the connection to the file, and fill the datatable
-			$Connection.Open()
-			$Adapter = New-Object -TypeName System.Data.OleDb.OleDbDataAdapter $Query, $Connection
-			$DataTable = New-Object System.Data.DataTable
-			$Adapter.Fill($DataTable) | Out-Null
-		}
-		catch {
-			# something went wrong :-(
-			Write-Host "Url: $Url"
-			Write-Host "Query: $Query"
-			Write-Host "ConnectionString: $ConnectionString"
-			Write-Error $_.Exception.Message
-		}
-        finally {
+        Using-O ($Connection = Get-ACEConnection $ConnectionString) {		
+			try {
+				$Adapter = New-Object -TypeName System.Data.OleDb.OleDbDataAdapter $Query, $Connection
+				$DataTable = New-Object System.Data.DataTable
+				$Adapter.Fill($DataTable) | Out-Null
+			}
+			catch {
+				# something went wrong :-(
+				Write-Host "Url: $Url"
+				Write-Host "Query: $Query"
+				Write-Host "ConnectionString: $ConnectionString"
+				Write-Error $_.Exception.Message
+			}
 			if ($Connection.State -eq 'Open') {
 				$Connection.Close()
 			}
-        }
-
-        # Return the results as an array
-        return ,$DataTable
+			# Return the results as an array
+			return ,$DataTable
+		}
     }
-
-    # Run the code in a 32bit job, since the provider is 32bit only
-    $job = Start-Job $JobCode -RunAs32 -ArgumentList $UrlPath, $Query, $ListID
-    $job | Wait-Job | Receive-Job
+	switch ($env:Processor_Architecture) 
+    {
+		# Run the code in a 32bit job, since the provider is 32bit only
+		'x86' { $job = Start-Job $JobCode -InitializationScript $functions -RunAs32 -ArgumentList $UrlPath, $Query, $ListID }
+		'AMD64' { $job = Start-Job $JobCode -InitializationScript $functions -ArgumentList $UrlPath, $Query, $ListID }
+	}
+	$job | Wait-Job | Receive-Job
     Remove-Job $job
 } #Get-SharePointListData
 
-function Using-O {
-	# http://weblogs.asp.net/adweigert/powershell-adding-the-using-statement
-    [CmdletBinding()]
-    param (
-        [System.IDisposable] $inputObject = $(throw $resource.required -f "-inputObject"),
-        [ScriptBlock] $scriptBlock = $(throw $resource.required -f "-scriptBlock")
-    )
+
+$functions = {
+	function Using-O {
+		# http://weblogs.asp.net/adweigert/powershell-adding-the-using-statement
+		[CmdletBinding()]
+		param (
+			[System.IDisposable] $inputObject = $(throw $resource.required -f "-inputObject"),
+			[ScriptBlock] $scriptBlock = $(throw $resource.required -f "-scriptBlock")
+		)
     
-    Try {
-        &$scriptBlock
-    } Finally {
-        if ($inputObject -ne $null) {
-            if ($inputObject.psbase -eq $null) {
-                $inputObject.Dispose()
-            } else {
-                $inputObject.psbase.Dispose()
-            }
-        }
-    }
-} #Using-O
-
-function checkMSAceOledbExist {
-	Write-Host "INFO: Checando 'AccessDatabaseEngine'" -f Cyan
-	$ie = $null
-	try {
-	    $ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;WSS;IMEX=1;RetrieveIds=Yes;"
-		$ie = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
-		$ie.Open()
-	}
-	catch {
-        $ie = $null
-	    Write-Warning $_
-	}
-    return ($ie -ne $null)
-} #checkMSAceOledbExist
-
-function installMicrosoftACEOLEDBProvider {
-	switch ($env:Processor_Architecture) 
-    { 
-        x86 { $link = 'http://download.microsoft.com/download/2/4/3/24375141-E08D-4803-AB0E-10F2E3A07AAA/AccessDatabaseEngine.exe'; $fileName = "AccessDatabaseEngine.exe"}
-        AMD64 { $link = 'http://download.microsoft.com/download/2/4/3/24375141-E08D-4803-AB0E-10F2E3A07AAA/AccessDatabaseEngine_x64.exe'; $fileName = "AccessDatabaseEngine_x64.exe"}
-	}
-    $file = "{0}\{1}" -f $env:TEMP, $fileName
-    if (-not (Test-Path $file)) {
-        $downloader = new-object System.Net.WebClient
-        $downloader.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials;
-		try {
-			Write-Host "INFO: Baixando '$fileName'. Arquiterura $env:Processor_Architecture. Link: $link" -f Cyan
-			$downloader.DownloadFile($link, $file)
-		} catch {
-			Write-Warning "Não foi possível fazer download do componente '$fileName'"
-			throw $_.Exception
+		Try {
+			&$scriptBlock
+		} Finally {
+			if ($inputObject -ne $null) {
+				if ($inputObject.psbase -eq $null) {
+					$inputObject.Dispose()
+				} else {
+					$inputObject.psbase.Dispose()
+				}
+			}
 		}
-    }
-    Start-Process $file -Wait
-} #installMicrosoftACEOLEDBProvider
+	} #Using-O
 
-#Export-ModuleMember Get-ExcelData, Get-SharePointListData, Using-O
+	function Get-ACEConnection {
+		param ($ConnectionString)
+	
+		$conn = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
+		try {
+			$conn.Open()
+			return $conn
+		}
+		catch {
+			installMicrosoftACEOLEDBProvider
+		}
+		$conn.Open()
+		$conn
+	} #Get-ACEConnection
+
+	function checkMSAceOledbExist {
+		$ie = $null
+		try {
+			$ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;WSS;IMEX=1;RetrieveIds=Yes;"
+			$ie = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
+			$ie.Open()
+		}
+		catch {
+			$ie = $null
+			Write-Warning $_
+		}
+		return ($ie -ne $null)
+	} #checkMSAceOledbExist
+
+	function installMicrosoftACEOLEDBProvider {
+		switch ($env:Processor_Architecture) 
+		{ 
+			'x86' { $link = 'http://download.microsoft.com/download/2/4/3/24375141-E08D-4803-AB0E-10F2E3A07AAA/AccessDatabaseEngine.exe'; $fileName = "AccessDatabaseEngine.exe"}
+			'AMD64' { $link = 'http://download.microsoft.com/download/2/4/3/24375141-E08D-4803-AB0E-10F2E3A07AAA/AccessDatabaseEngine_x64.exe'; $fileName = "AccessDatabaseEngine_x64.exe"}
+		}
+		$file = "{0}\{1}" -f $env:TEMP, $fileName
+		if (-not (Test-Path $file)) {
+			$downloader = new-object System.Net.WebClient
+			$downloader.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials;
+			try {
+				Write-Host "INFO: Baixando '$fileName'. Arquiterura $env:Processor_Architecture. Link: $link" -f Cyan
+				$downloader.DownloadFile($link, $file)
+			} catch {
+				Write-Warning "Não foi possível fazer download do componente '$fileName'"
+				throw $_.Exception
+			}
+		}
+		Start-Process $file -Wait
+	} #installMicrosoftACEOLEDBProvider
+}
