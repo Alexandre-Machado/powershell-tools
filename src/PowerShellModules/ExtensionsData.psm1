@@ -182,7 +182,7 @@ function checkMSAceOledbExist {
 } #checkMSAceOledbExist
 
 function installMicrosoftACEOLEDBProvider {
-	Write-EventLog "Baixando 'AccessDatabaseEngine'"
+	Write-Host "Baixando 'AccessDatabaseEngine'"
     $file = "{0}\{1}" -f $env:TEMP, "AccessDatabaseEngine.exe"
     if (-not (Test-Path $file)) {
         $downloader = new-object System.Net.WebClient
