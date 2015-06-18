@@ -188,4 +188,4 @@ function installMicrosoftACEOLEDBProvider {
     Start-Process $file -Wait
 } #installMicrosoftACEOLEDBProvider
 
-Export-ModuleMember Get-ExcelData, Get-SharePointListData, Using-O
+#Export-ModuleMember Get-ExcelData, Get-SharePointListData, Using-O
