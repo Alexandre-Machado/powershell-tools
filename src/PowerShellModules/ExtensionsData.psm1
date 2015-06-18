@@ -1,4 +1,5 @@
-﻿function Get-ExcelData {
+﻿$resource = @{ required = "O paramentro {0} é requerido" }
+function Get-ExcelData {
 	# http://blogs.technet.com/b/pstips/archive/2014/06/02/get-excel-data-without-excel.aspx
     [CmdletBinding(DefaultParameterSetName='Worksheet')]
     Param(
@@ -69,7 +70,7 @@
     $job = Start-Job $JobCode -RunAs32 -ArgumentList $Path, $Query
     $job | Wait-Job | Receive-Job
     Remove-Job $job
-}
+} #Get-ExcelData
 
 function Get-SharePointListData {
     [CmdletBinding(DefaultParameterSetName='ListName')]
@@ -112,28 +113,26 @@ function Get-SharePointListData {
 
         $ConnectionString = 'Provider=Microsoft.ACE.OLEDB.12.0;WSS;IMEX=1;RetrieveIds=Yes;DATABASE={0};LIST={1};' -f $UrlPath, $ListID
 
-        #$ConnectionString = 'Provider={0};Data Source={1};Extended Properties="{2}"' -f $Provider, $Url, $ExtendedProperties
         $Connection = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
 		
-        try {
-            # Open the connection to the file, and fill the datatable
-            $Connection.Open()
-            $Adapter = New-Object -TypeName System.Data.OleDb.OleDbDataAdapter $Query, $Connection
-            $DataTable = New-Object System.Data.DataTable
-            $Adapter.Fill($DataTable) | Out-Null
-        }
-        catch {
-            # something went wrong :-(
-            Write-Host "Url: $Url"
-            Write-Host "Query: $Query"
-            Write-Host "ConnectionString: $ConnectionString"
-            Write-Error $_.Exception.Message
-        }
+		try {
+			# Open the connection to the file, and fill the datatable
+			$Connection.Open()
+			$Adapter = New-Object -TypeName System.Data.OleDb.OleDbDataAdapter $Query, $Connection
+			$DataTable = New-Object System.Data.DataTable
+			$Adapter.Fill($DataTable) | Out-Null
+		}
+		catch {
+			# something went wrong :-(
+			Write-Host "Url: $Url"
+			Write-Host "Query: $Query"
+			Write-Host "ConnectionString: $ConnectionString"
+			Write-Error $_.Exception.Message
+		}
         finally {
-            # Close the connection
-            if ($Connection.State -eq 'Open') {
-                $Connection.Close()
-            }
+			if ($Connection.State -eq 'Open') {
+				$Connection.Close()
+			}
         }
 
         # Return the results as an array
@@ -144,13 +143,14 @@ function Get-SharePointListData {
     $job = Start-Job $JobCode -RunAs32 -ArgumentList $UrlPath, $Query, $ListID
     $job | Wait-Job | Receive-Job
     Remove-Job $job
-}
+} #Get-SharePointListData
 
-function Using {
+function Using-O {
 	# http://weblogs.asp.net/adweigert/powershell-adding-the-using-statement
+    [CmdletBinding()]
     param (
-        [System.IDisposable] $inputObject = $(throw "The parameter -inputObject is required."),
-        [ScriptBlock] $scriptBlock = $(throw "The parameter -scriptBlock is required.")
+        [System.IDisposable] $inputObject = $(throw $resource.required -f "-inputObject"),
+        [ScriptBlock] $scriptBlock = $(throw $resource.required -f "-scriptBlock")
     )
     
     Try {
@@ -164,7 +164,7 @@ function Using {
             }
         }
     }
-}
+} #Using-O
 
 function checkMSAceOledbExist {
 	$ie = $null
@@ -176,7 +176,7 @@ function checkMSAceOledbExist {
 	    Write-Warning $_
 	}
     return ($ie -ne $null)
-}
+} #checkMSAceOledbExist
 
 function installMicrosoftACEOLEDBProvider {
     $file = "{0}\{1}" -f $env:TEMP, "AccessDatabaseEngine.exe"
@@ -186,4 +186,6 @@ function installMicrosoftACEOLEDBProvider {
         $downloader.DownloadFile('http://download.microsoft.com/download/f/d/8/fd8c20d8-e38a-48b6-8691-542403b91da1/AccessDatabaseEngine.exe', $file)
     }
     Start-Process $file -Wait
-}
+} #installMicrosoftACEOLEDBProvider
+
+Export-ModuleMember Get-ExcelData, Get-SharePointListData, Using-O
