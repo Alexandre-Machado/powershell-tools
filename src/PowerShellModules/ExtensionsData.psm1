@@ -105,7 +105,7 @@ function Get-SharePointListData {
         }
     }
 
-    if ( -Not (checkMSAceOledbExist) ) {
+    if ( -not (checkMSAceOledbExist) ) {
         installMicrosoftACEOLEDBProvider
     }
 
@@ -169,24 +169,26 @@ function Using-O {
 } #Using-O
 
 function checkMSAceOledbExist {
+	Write-Host "INFO: Checando 'AccessDatabaseEngine'" -ForegroundColor Blue
 	$ie = $null
-	$ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;WSS;IMEX=1;RetrieveIds=Yes;"
 	try {
+	    $ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;WSS;IMEX=1;RetrieveIds=Yes;"
 		$ie = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
 		$ie.Open()
 	}
 	catch {
+        $ie = $null
 	    Write-Warning $_
 	}
     return ($ie -ne $null)
 } #checkMSAceOledbExist
 
 function installMicrosoftACEOLEDBProvider {
-	Write-Host "Baixando 'AccessDatabaseEngine'"
+    Write-Host "INFO: Baixando 'AccessDatabaseEngine'" -ForegroundColor Blue
     $file = "{0}\{1}" -f $env:TEMP, "AccessDatabaseEngine.exe"
     if (-not (Test-Path $file)) {
         $downloader = new-object System.Net.WebClient
-        $downloader.Proxy.Credentials=[System.Net.CredentialCache]::DefaultNetworkCredentials;
+        $downloader.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials;
 		try {
 			$downloader.DownloadFile('http://download.microsoft.com/download/f/d/8/fd8c20d8-e38a-48b6-8691-542403b91da1/AccessDatabaseEngine.exe', $file)
 		} catch {
