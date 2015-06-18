@@ -1,4 +1,6 @@
-﻿$resource = @{ required = "O paramentro {0} é requerido" }
+﻿$resource = @{
+	required = "O paramentro {0} é requerido"
+}
 function Get-ExcelData {
 	# http://blogs.technet.com/b/pstips/archive/2014/06/02/get-excel-data-without-excel.aspx
     [CmdletBinding(DefaultParameterSetName='Worksheet')]
@@ -171,6 +173,7 @@ function checkMSAceOledbExist {
 	$ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;WSS;IMEX=1;RetrieveIds=Yes;"
 	try {
 		$ie = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
+		$ie.Open()
 	}
 	catch {
 	    Write-Warning $_
