@@ -186,7 +186,12 @@ function installMicrosoftACEOLEDBProvider {
     if (-not (Test-Path $file)) {
         $downloader = new-object System.Net.WebClient
         $downloader.Proxy.Credentials=[System.Net.CredentialCache]::DefaultNetworkCredentials;
-        $downloader.DownloadFile('http://download.microsoft.com/download/f/d/8/fd8c20d8-e38a-48b6-8691-542403b91da1/AccessDatabaseEngine.exe', $file)
+		try {
+			$downloader.DownloadFile('http://download.microsoft.com/download/f/d/8/fd8c20d8-e38a-48b6-8691-542403b91da1/AccessDatabaseEngine.exe', $file)
+		} catch {
+			Write-Warning "Não foi possível fazer download do componente 'AccessDatabaseEngine'"
+			throw $_.Exception
+		}
     }
     Start-Process $file -Wait
 } #installMicrosoftACEOLEDBProvider
