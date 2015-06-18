@@ -169,7 +169,7 @@ function Using-O {
 } #Using-O
 
 function checkMSAceOledbExist {
-	Write-Host "INFO: Checando 'AccessDatabaseEngine'" -ForegroundColor Blue
+	Write-Host "INFO: Checando 'AccessDatabaseEngine'" -f Cyan
 	$ie = $null
 	try {
 	    $ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;WSS;IMEX=1;RetrieveIds=Yes;"
@@ -184,15 +184,20 @@ function checkMSAceOledbExist {
 } #checkMSAceOledbExist
 
 function installMicrosoftACEOLEDBProvider {
-    Write-Host "INFO: Baixando 'AccessDatabaseEngine'" -ForegroundColor Blue
-    $file = "{0}\{1}" -f $env:TEMP, "AccessDatabaseEngine.exe"
+	switch ($env:Processor_Architecture) 
+    { 
+        x86 { $link = 'http://download.microsoft.com/download/2/4/3/24375141-E08D-4803-AB0E-10F2E3A07AAA/AccessDatabaseEngine.exe'; $fileName = "AccessDatabaseEngine.exe"}
+        AMD64 { $link = 'http://download.microsoft.com/download/2/4/3/24375141-E08D-4803-AB0E-10F2E3A07AAA/AccessDatabaseEngine_x64.exe'; $fileName = "AccessDatabaseEngine_x64.exe"}
+	}
+    $file = "{0}\{1}" -f $env:TEMP, $fileName
     if (-not (Test-Path $file)) {
         $downloader = new-object System.Net.WebClient
         $downloader.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials;
 		try {
-			$downloader.DownloadFile('http://download.microsoft.com/download/f/d/8/fd8c20d8-e38a-48b6-8691-542403b91da1/AccessDatabaseEngine.exe', $file)
+			Write-Host "INFO: Baixando '$fileName'. Arquiterura $env:Processor_Architecture. Link: $link" -f Cyan
+			$downloader.DownloadFile($link, $file)
 		} catch {
-			Write-Warning "Não foi possível fazer download do componente 'AccessDatabaseEngine'"
+			Write-Warning "Não foi possível fazer download do componente '$fileName'"
 			throw $_.Exception
 		}
     }
