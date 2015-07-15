@@ -30,7 +30,6 @@
   <ItemGroup>
     <Compile Include="ExtensionsData.psm1" />
     <Compile Include="ExtensionsData.psd1" />
-    <Compile Include="Module.tests.ps1" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Target Name="Build" />
